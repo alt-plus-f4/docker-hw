@@ -1,0 +1,25 @@
+version: '3'
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    command: ["./wait-for-it.sh", "mysql_server:3306", "--", "npm", "start"]
+    depends_on:
+      - mysql_server
+      - rabbitmq
+
+  mysql_server:
+    image: mysql:latest
+    environment: 
+      - MYSQL_DATABASE=test_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=secret
+      - MYSQL_ROOT_PASSWORD=secret
+
+  rabbitmq:
+    image: rabbitmq:latest
+    ports:
+      - "5672:5672"

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  	<style>
+		:root {--shadow-color: 0deg 0% 0%;--shadow-elevation-low:  0.5px 0.6px 0.8px hsl(var(--shadow-color) / 0.15),  0.8px 1px 1.3px -1.7px hsl(var(--shadow-color) / 0.13),  2.1px 2.7px 3.4px -3.3px hsl(var(--shadow-color) / 0.1);--shadow-elevation-medium:  0.5px 0.6px 0.8px hsl(var(--shadow-color) / 0.16),  1.4px 1.8px 2.3px -1.1px hsl(var(--shadow-color) / 0.14),  4.1px 5.2px 6.6px -2.2px hsl(var(--shadow-color) / 0.12),  10.6px 13.6px 17.2px -3.3px hsl(var(--shadow-color) / 0.1);--shadow-elevation-high:  0.5px 0.6px 0.8px hsl(var(--shadow-color) / 0.17),  2.7px 3.4px 4.3px -0.6px hsl(var(--shadow-color) / 0.16),  5.6px 7.2px 9.1px -1.1px hsl(var(--shadow-color) / 0.15),  10.9px 13.9px 17.6px -1.7px hsl(var(--shadow-color) / 0.13),  20px 25.6px 32.4px -2.2px hsl(var(--shadow-color) / 0.12),  34.5px 44.1px 55.9px -2.8px hsl(var(--shadow-color) / 0.11),  56px 71.6px 90.7px -3.3px hsl(var(--shadow-color) / 0.1);}
+		#logoutBtn, #chat, #messages, #message, #send {display: none;}
+		body {background-color: #132043;color: #F1B4BB; font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;}
+		h1, label {color: #F1B4BB;}
+		form {width: 100%;}
+		input {resize: none;width: 95%;padding: 8px;margin-top: 5px;margin-bottom: 8px;border: none;border-radius: 5px;background-color: #fdf0f0c0;color: black;}
+		input:focus{ outline: none; font-weight: bold; transition: background-color linear 0.5s; background-color: white;}
+		button {width: 100%;padding: 10px;margin-top: 10px;background-color: #1F4172;color: #FDF0F0; font-weight: 700; box-shadow: var(--shadow-elevation-medium); border: none;border-radius: 5px;cursor: pointer; transition: linear 0.2s;}
+		button:hover {background-color: #F1B4BB;color: #1F4172; transition: linear 0.2s;}
+		ul li {margin: 5px;}
+		#userForm {position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%); width: 400px;margin: auto; box-shadow: var(--shadow-elevation-high);border-radius: 8px;padding: 30px;background-color: #1F4172;}
+		#chat {width: 100%; display: flex; flex-flow: column; align-items: center;}
+		#message {font-family:Verdana, Geneva, Tahoma, sans-serif; box-shadow: var(--shadow-elevation-high); font-size: 14px; width: 95%; padding: 8px; border: none; border-radius: 5px; background-color: #0C0C0C; color: #16C60C; resize: none; outline: none;}
+		#messages{margin-top: 70px; list-style-type: none; box-shadow: var(--shadow-elevation-high); padding: 0; width: 95%; height: 70vh; overflow-y: scroll; background-color: #0C0C0C; border-radius: 5px; margin-bottom: 10px; color : #16C60C;}
+		#loginbtn {border: 1px solid #F1B4BB;}
+		.wrapper {display: flex;flex-direction: column;align-items: center;margin: 20px;}
+		.btns {width: 30%;}
+		.footer {position: fixed;top: 20px;width: 100%; display: flex; justify-content: center;}   
+  	</style>
+</head>
+<body>
+<div id="userForm">
+    <div class="wrapper">
+        <h1>Real-Time Chat</h1>
+        <form>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" placeholder="MyName" required><br>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" placeholder="email@email.com" required><br>
+            <button type="button" id="loginbtn" onclick="submitLogin()">Login</button>
+        </form>
+    </div>
+</div>
+
+<div id="chat">
+    <ul id="messages"></ul>
+    <textarea id="message" placeholder="Type your message..."></textarea><br>
+    <button class="btns" id="send" type="button" onclick="sendMessage()">Send</button>
+</div>
+
+<footer class="footer">
+    <button id="logoutBtn" class="btns" type="button" onclick="logout()">Logout</button>
+</footer>
+<script>
+	var message = document.getElementById("message");
+
+	message.addEventListener("keydown", function (e) {
+		if (e.code === "Enter") if(message.value != "") sendMessage();
+	});
+
+	let userLoggedIn = false;
+	let username = '';
+	let email = '';
+
+	const socket = io();
+
+	function submitLogin() {
+		username = document.getElementById('username').value;
+		email = document.getElementById('email').value;
+
+		if (username === '' || email === '') {
+			alert('Please fill in all fields.');
+			return;
+		}
+
+		socket.emit('login', { username, email });
+		userLoggedIn = true;
+
+		showChatUI(username);
+	}
+
+	function sendMessage() {
+		if (userLoggedIn) {
+			const messageInput = document.getElementById('message');
+			const message = messageInput.value;
+			messageInput.value = "";
+
+			socket.emit('chat message', { username, email, message });
+		} 
+		else alert('Please login first.');
+	}
+
+	function logout() {
+        userLoggedIn = false;
+        showLoginForm();
+    }
+
+	socket.on('chat message', function(data) {
+		const messages = document.getElementById('messages');
+		const listItem = document.createElement('li');
+		listItem.textContent = `${data.username} (${data.email}): ${data.message}`;
+		messages.appendChild(listItem);
+		messages.scrollTop = messages.scrollHeight;
+    });
+
+    function showLoginForm() {
+        document.getElementById('userForm').style.display = 'block';
+        document.getElementById('chat').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'none';
+        document.getElementById('message').style.display = 'none';
+        document.getElementById('messages').style.display = 'none';
+        document.getElementById('send').style.display = 'none';
+    }
+
+    function showChatUI(username) {
+        document.getElementById('userForm').style.display = 'none';
+        document.getElementById('chat').style.display = 'flex';
+        document.getElementById('logoutBtn').style.display = 'block';
+        document.getElementById('message').style.display = 'block';
+        document.getElementById('messages').style.display = 'block';
+        document.getElementById('send').style.display = 'block';
+
+        const messages = document.getElementById('messages');
+        const welcomeMessage = document.createElement('li');
+        welcomeMessage.textContent = `Welcome, ${username}! You can start chatting now.`;
+        messages.appendChild(welcomeMessage);
+    }
+    </script>
+</body>
+</html>
