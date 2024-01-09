@@ -1,4 +1,3 @@
-version: '3'
 services:
   web:
     build:
@@ -6,7 +5,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    command: ["./wait-for-it.sh", "mysql_server:3306", "--", "npm", "start"]
+    command: ["./wait-for-it.sh", "mysql_server:3306", "--", "./wait-for-it.sh", "rabbitmq:5672", "--", "npm", "start"]
     depends_on:
       - mysql_server
       - rabbitmq
